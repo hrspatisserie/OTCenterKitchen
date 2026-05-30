@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>รายงานสรุปเวลาทำงาน</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface2: #1c2128;
+    --border: #30363d;
+    --text: #e6edf3;
+    --muted: #7d8590;
+    --ot: #58a6ff;
+    --ot-holiday: #f78166;
+    --late: #ffa657;
+    --leave: #7ee787;
+    --absent: #ff7b72;
+    --accent: #238636;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Sarabun', sans-serif;
+    font-size: 14px;
+    min-height: 100vh;
+  }
+
+  /* ── Header ── */
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 18px 32px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  header h1 { font-size: 18px; font-weight: 700; letter-spacing: .5px; }
+  header .badge {
+    background: #1f6feb22;
+    border: 1px solid #1f6feb55;
+    color: var(--ot);
+    font-size: 12px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  /* ── Layout ── */
+  .wrap { padding: 24px 32px; max-width: 1400px; margin: 0 auto; }
+
+  /* ── Filter bar ── */
+  .filters {
+    display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; align-items: center;
+  }
+  .filters label { color: var(--muted); font-size: 13px; }
+  .filters select, .filters input {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 7px 12px;
+    border-radius: 6px;
+    font-family: 'Sarabun', sans-serif;
+    font-size: 13px;
+    outline: none;
+    cursor: pointer;
+  }
+  .filters select:hover, .filters input:hover { border-color: var(--ot); }
+  .btn-reset {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 7px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: 'Sarabun', sans-serif;
+    font-size: 13px;
+    transition: all .2s;
+  }
+  .btn-reset:hover { border-color: var(--ot); color: var(--ot); }
+
+  /* ── KPI Cards ── */
+  .kpis {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+  .kpi {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 20px;
+    position: relative;
+    overflow: hidden;
+    transition: transform .2s, border-color .2s;
+  }
+  .kpi:hover { transform: translateY(-2px); border-color: var(--kpi-color); }
+  .kpi::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    background: var(--kpi-color);
+    border-radius: 10px 10px 0 0;
+  }
+  .kpi-icon { font-size: 22px; margin-bottom: 10px; }
+  .kpi-label { color: var(--muted); font-size: 12px; margin-bottom: 4px; }
+  .kpi-value { font-size: 26px; font-weight: 700; color: var(--kpi-color); font-family: 'IBM Plex Mono', monospace; }
+  .kpi-sub { color: var(--muted); font-size: 11px; margin-top: 4px; }
+
+  /* ── Section title ── */
+  .section-title {
+    font-size: 13px; font-weight: 600; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 1px;
+    margin-bottom: 12px; padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* ── Department summary ── */
+  .dept-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+  .dept-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 20px;
+  }
+  .dept-name {
+    font-weight: 600; font-size: 13px; margin-bottom: 12px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .dept-badge {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  .dept-stats { display: flex; flex-wrap: wrap; gap: 8px; }
+  .dstat {
+    flex: 1 1 120px;
+    background: var(--surface2);
+    border-radius: 6px;
+    padding: 8px 10px;
+    display: flex; flex-direction: column; gap: 2px;
+  }
+  .dstat-label { font-size: 10px; color: var(--muted); }
+  .dstat-val { font-size: 14px; font-weight: 600; font-family: 'IBM Plex Mono', monospace; }
+
+  /* ── Bar chart ── */
+  .chart-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px 24px;
+    margin-bottom: 28px;
+  }
+  .bar-chart { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
+  .bar-row { display: flex; align-items: center; gap: 10px; }
+  .bar-label { width: 160px; font-size: 12px; color: var(--text); flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bar-track { flex: 1; height: 18px; background: var(--surface2); border-radius: 4px; overflow: hidden; position: relative; }
+  .bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    background: var(--bar-color, var(--ot));
+    transition: width .8s cubic-bezier(.4,0,.2,1);
+    display: flex; align-items: center; padding-left: 8px;
+    font-size: 10px; font-weight: 600; color: #000a; font-family: 'IBM Plex Mono', monospace;
+    white-space: nowrap;
+  }
+  .bar-num { width: 70px; font-size: 12px; font-family: 'IBM Plex Mono', monospace; color: var(--muted); text-align: right; flex-shrink: 0; }
+
+  /* ── Table ── */
+  .table-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 28px;
+  }
+  .table-header {
+    padding: 14px 20px;
+    display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+  }
+  .table-title { font-weight: 600; font-size: 14px; }
+  .search-box {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-family: 'Sarabun', sans-serif;
+    font-size: 13px;
+    outline: none;
+    width: 200px;
+  }
+  .search-box:focus { border-color: var(--ot); }
+  table { width: 100%; border-collapse: collapse; }
+  thead th {
+    background: var(--surface2);
+    padding: 10px 14px;
+    font-size: 11px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: .5px;
+    color: var(--muted);
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+    cursor: pointer;
+    user-select: none;
+  }
+  thead th:hover { color: var(--text); }
+  thead th .sort-arrow { margin-left: 4px; opacity: .4; }
+  thead th.sorted .sort-arrow { opacity: 1; color: var(--ot); }
+  tbody tr { border-bottom: 1px solid var(--border); transition: background .15s; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: var(--surface2); }
+  tbody td { padding: 10px 14px; font-size: 13px; vertical-align: middle; }
+  .emp-id { font-family: 'IBM Plex Mono', monospace; color: var(--muted); font-size: 11px; }
+  .dept-tag {
+    font-size: 10px; padding: 2px 7px; border-radius: 3px;
+    background: var(--surface2); border: 1px solid var(--border); color: var(--muted);
+  }
+  .pill {
+    display: inline-block;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px; font-weight: 600;
+    padding: 2px 8px; border-radius: 4px;
+  }
+  .pill-ot   { background: #58a6ff22; color: var(--ot); }
+  .pill-late { background: #ffa65722; color: var(--late); }
+  .pill-leave { background: #7ee78722; color: var(--leave); }
+  .pill-absent { background: #ff7b7222; color: var(--absent); }
+  .pill-zero  { color: var(--muted); font-size: 11px; }
+
+  .no-data { text-align: center; color: var(--muted); padding: 40px; }
+
+  /* ── Legend ── */
+  .legend { display: flex; gap: 20px; flex-wrap: wrap; margin-top: 8px; }
+  .leg-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+  .leg-dot { width: 10px; height: 10px; border-radius: 2px; }
+
+  @media(max-width:768px) {
+    .wrap { padding: 16px; }
+    .bar-label { width: 110px; }
+    .kpi-value { font-size: 20px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:4px;font-family:'IBM Plex Mono',monospace;">HR ANALYTICS</div>
+    <h1>รายงานสรุปผลเวลาการทำงาน</h1>
+  </div>
+  <div class="badge" id="empCount">— พนักงาน</div>
+</header>
+
+<div class="wrap">
+
+  <!-- Filters -->
+  <div class="filters">
+    <label>แผนก:</label>
+    <select id="deptFilter" onchange="applyFilters()">
+      <option value="">ทุกแผนก</option>
+    </select>
+    <label style="margin-left:8px;">พนักงาน:</label>
+    <select id="nameFilter" onchange="applyFilters()" style="width:220px;">
+      <option value="">ทุกคน</option>
+    </select>
+    <button class="btn-reset" onclick="resetFilters()">รีเซ็ต</button>
+  </div>
+
+  <!-- KPI Cards -->
+  <div class="kpis" id="kpiRow"></div>
+
+  <!-- Dept summary -->
+  <div class="section-title">สรุปตามแผนก</div>
+  <div class="dept-grid" id="deptGrid"></div>
+
+  <!-- OT Bar chart -->
+  <div class="chart-wrap">
+    <div class="section-title" style="margin-bottom:0">ชั่วโมงโอที (x1.5) สูงสุด 10 อันดับแรก</div>
+    <div class="legend">
+      <div class="leg-item"><div class="leg-dot" style="background:var(--ot)"></div>โอทีล่วงเวลา (x1.5)</div>
+      <div class="leg-item"><div class="leg-dot" style="background:var(--ot-holiday)"></div>วันหยุด/นักขัตฤกษ์</div>
+    </div>
+    <div class="bar-chart" id="otChart"></div>
+  </div>
+
+  <!-- Table -->
+  <div class="table-wrap">
+    <div class="table-header">
+      <div class="table-title">รายละเอียดพนักงานทุกคน</div>
+    </div>
+    <div style="overflow-x:auto;">
+      <table>
+        <thead>
+          <tr>
+            <th onclick="sortTable('id')">รหัส <span class="sort-arrow">↕</span></th>
+            <th onclick="sortTable('name')">ชื่อ-นามสกุล <span class="sort-arrow">↕</span></th>
+            <th>แผนก</th>
+            <th onclick="sortTable('lateDays')" style="text-align:right">มาสาย (ครั้ง) <span class="sort-arrow">↕</span></th>
+            <th onclick="sortTable('lateMin')" style="text-align:right">นาทีสาย <span class="sort-arrow">↕</span></th>
+            <th onclick="sortTable('otHours')" style="text-align:right">โอที x1.5 (ชม.) <span class="sort-arrow">↕</span></th>
+            <th onclick="sortTable('otHolHours')" style="text-align:right">ทำงานวันหยุด (ชม.) <span class="sort-arrow">↕</span></th>
+            <th onclick="sortTable('otHolOTHours')" style="text-align:right">โอทีวันหยุด (ชม.) <span class="sort-arrow">↕</span></th>
+            <th onclick="sortTable('leaveSickDays')" style="text-align:right">ลาป่วย (วัน) <span class="sort-arrow">↕</span></th>
+            <th onclick="sortTable('leavePersonalDays')" style="text-align:right">ลากิจ (วัน) <span class="sort-arrow">↕</span></th>
+            <th onclick="sortTable('leaveVacationDays')" style="text-align:right">ลาพักร้อน (วัน) <span class="sort-arrow">↕</span></th>
+            <th onclick="sortTable('absent')" style="text-align:right">ขาดงาน <span class="sort-arrow">↕</span></th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ─── Raw data parsed from Excel ───────────────────────────────────────────
+// fields: otDays/otHours = โอทีล่วงเวลา x1.5
+//         otHolDays/otHolHours = ทำงานวันหยุด/นักขัตฤกษ์
+//         otHolOTDays/otHolOTHours = โอทีล่วงเวลาวันหยุด
+const RAW = [
+  // แผนก D0022 เบเกอรี (ครัวกลาง)
+  {id:'68003',  name:'อรจิรา ภักดี',           dept:'D0022 เบเกอรี (ครัวกลาง)', lateDays:0,  lateMin:0,   otDays:7,  otHours:10,   otHolDays:1, otHolHours:8,  otHolOTDays:0, otHolOTHours:0,   leaveSickDays:0,  leavePersonalDays:0, leaveVacationDays:2,   absent:0},
+  {id:'68015',  name:'ศุภกฤต เปลี่ยนสีนวล',    dept:'D0022 เบเกอรี (ครัวกลาง)', lateDays:8,  lateMin:29,  otDays:13, otHours:33,   otHolDays:1, otHolHours:8,  otHolOTDays:1, otHolOTHours:1,   leaveSickDays:6,  leavePersonalDays:0, leaveVacationDays:0,   absent:0},
+  {id:'68024',  name:'ธีรภัทร์ คลังสิน',        dept:'D0022 เบเกอรี (ครัวกลาง)', lateDays:0,  lateMin:0,   otDays:14, otHours:9.5,  otHolDays:0, otHolHours:0,  otHolOTDays:1, otHolOTHours:0.5, leaveSickDays:1,  leavePersonalDays:0, leaveVacationDays:3,   absent:0},
+  {id:'690046', name:'อิสริยา โพธิ์ทอง',        dept:'D0022 เบเกอรี (ครัวกลาง)', lateDays:3,  lateMin:7,   otDays:12, otHours:26.5, otHolDays:1, otHolHours:8,  otHolOTDays:0, otHolOTHours:0,   leaveSickDays:0,  leavePersonalDays:0, leaveVacationDays:1,   absent:0},
+  {id:'690047', name:'นัฐชิตา พุ่มพวง',         dept:'D0022 เบเกอรี (ครัวกลาง)', lateDays:0,  lateMin:0,   otDays:14, otHours:21,   otHolDays:1, otHolHours:8,  otHolOTDays:0, otHolOTHours:0,   leaveSickDays:0,  leavePersonalDays:0, leaveVacationDays:0,   absent:0},
+  // แผนก D0023 เบเกอรี (ต่างชาติ)
+  {id:'680077', name:'ซอ ไป โทน',              dept:'D0023 เบเกอรี (ต่างชาติ)', lateDays:4,  lateMin:2,   otDays:9,  otHours:23,   otHolDays:1, otHolHours:8,  otHolOTDays:0, otHolOTHours:0,   leaveSickDays:0.5,leavePersonalDays:0, leaveVacationDays:0,   absent:0},
+  {id:'680078', name:'ซอ จิน โก โก ทัน',       dept:'D0023 เบเกอรี (ต่างชาติ)', lateDays:5,  lateMin:2,   otDays:0,  otHours:0,    otHolDays:1, otHolHours:8,  otHolOTDays:0, otHolOTHours:0,   leaveSickDays:0,  leavePersonalDays:0, leaveVacationDays:0,   absent:0},
+  {id:'680079', name:'ซอ มิน อ่อง',             dept:'D0023 เบเกอรี (ต่างชาติ)', lateDays:0,  lateMin:0,   otDays:18, otHours:58.5, otHolDays:1, otHolHours:8,  otHolOTDays:0, otHolOTHours:0,   leaveSickDays:0,  leavePersonalDays:0, leaveVacationDays:0,   absent:0},
+  {id:'680080', name:'โซ นัย วิน',              dept:'D0023 เบเกอรี (ต่างชาติ)', lateDays:4,  lateMin:2,   otDays:9,  otHours:11.5, otHolDays:1, otHolHours:8,  otHolOTDays:1, otHolOTHours:1,   leaveSickDays:0,  leavePersonalDays:0, leaveVacationDays:0,   absent:0},
+  {id:'680081', name:'ทา ซิน',                  dept:'D0023 เบเกอรี (ต่างชาติ)', lateDays:0,  lateMin:0,   otDays:14, otHours:37.5, otHolDays:1, otHolHours:8,  otHolOTDays:0, otHolOTHours:0,   leaveSickDays:0,  leavePersonalDays:0, leaveVacationDays:0.5, absent:0},
+  {id:'680082', name:'แนน คิน เทะ ไลง์ ทุน',   dept:'D0023 เบเกอรี (ต่างชาติ)', lateDays:0,  lateMin:0,   otDays:16, otHours:43.5, otHolDays:1, otHolHours:8,  otHolOTDays:1, otHolOTHours:1,   leaveSickDays:0,  leavePersonalDays:0, leaveVacationDays:0,   absent:0},
+  {id:'680083', name:'นาน มิ้น ทาน เอ',         dept:'D0023 เบเกอรี (ต่างชาติ)', lateDays:0,  lateMin:0,   otDays:17, otHours:51,   otHolDays:1, otHolHours:8,  otHolOTDays:1, otHolOTHours:1,   leaveSickDays:0,  leavePersonalDays:0, leaveVacationDays:0,   absent:0},
+  {id:'680084', name:'ซอ ออง โก อู',            dept:'D0023 เบเกอรี (ต่างชาติ)', lateDays:1,  lateMin:10,  otDays:12, otHours:34.5, otHolDays:1, otHolHours:8,  otHolOTDays:1, otHolOTHours:1,   leaveSickDays:0,  leavePersonalDays:0, leaveVacationDays:0.5, absent:0},
+  {id:'680085', name:'นัน จี จี ลิน',            dept:'D0023 เบเกอรี (ต่างชาติ)', lateDays:0,  lateMin:0,   otDays:16, otHours:40.5, otHolDays:1, otHolHours:8,  otHolOTDays:1, otHolOTHours:3,   leaveSickDays:0,  leavePersonalDays:0, leaveVacationDays:0,   absent:0},
+  {id:'680086', name:'ซอ จอ ตู',                dept:'D0023 เบเกอรี (ต่างชาติ)', lateDays:0,  lateMin:0,   otDays:15, otHours:30.5, otHolDays:1, otHolHours:8,  otHolOTDays:0, otHolOTHours:0,   leaveSickDays:0,  leavePersonalDays:0, leaveVacationDays:0,   absent:0},
+  {id:'690024', name:'อัง เพียง',               dept:'D0023 เบเกอรี (ต่างชาติ)', lateDays:14, lateMin:74,  otDays:3,  otHours:5,    otHolDays:1, otHolHours:8,  otHolOTDays:1, otHolOTHours:1,   leaveSickDays:0,  leavePersonalDays:0, leaveVacationDays:0,   absent:0},
+  {id:'690025', name:'ซอ เนียง ทู',             dept:'D0023 เบเกอรี (ต่างชาติ)', lateDays:6,  lateMin:25,  otDays:7,  otHours:9,    otHolDays:1, otHolHours:8,  otHolOTDays:0, otHolOTHours:0,   leaveSickDays:0,  leavePersonalDays:0, leaveVacationDays:0.5, absent:0},
+  {id:'690026', name:'พี พิว ป่าย',             dept:'D0023 เบเกอรี (ต่างชาติ)', lateDays:11, lateMin:57,  otDays:7,  otHours:10,   otHolDays:1, otHolHours:8,  otHolOTDays:0, otHolOTHours:0,   leaveSickDays:0,  leavePersonalDays:0, leaveVacationDays:0,   absent:0},
+  {id:'690035', name:'ซอ ชิด แต เล',            dept:'D0023 เบเกอรี (ต่างชาติ)', lateDays:3,  lateMin:3,   otDays:8,  otHours:17,   otHolDays:1, otHolHours:8,  otHolOTDays:1, otHolOTHours:1,   leaveSickDays:0,  leavePersonalDays:0, leaveVacationDays:0,   absent:0},
+  {id:'690037', name:'ซอ อ่อง เมียว นวย',       dept:'D0023 เบเกอรี (ต่างชาติ)', lateDays:1,  lateMin:2,   otDays:9,  otHours:12,   otHolDays:1, otHolHours:8,  otHolOTDays:1, otHolOTHours:1,   leaveSickDays:0,  leavePersonalDays:0, leaveVacationDays:0,   absent:0},
+  {id:'690044', name:'ซอ เมียด โซ',             dept:'D0023 เบเกอรี (ต่างชาติ)', lateDays:0,  lateMin:0,   otDays:10, otHours:19,   otHolDays:1, otHolHours:8,  otHolOTDays:1, otHolOTHours:1,   leaveSickDays:0,  leavePersonalDays:0, leaveVacationDays:0,   absent:0},
+  {id:'690053', name:'ซอ หม่อง ซุย ซอง',        dept:'D0023 เบเกอรี (ต่างชาติ)', lateDays:0,  lateMin:0,   otDays:4,  otHours:10.5, otHolDays:0, otHolHours:0,  otHolOTDays:0, otHolOTHours:0,   leaveSickDays:0,  leavePersonalDays:0, leaveVacationDays:0,   absent:0},
+  {id:'690054', name:'GAR MA NI',               dept:'D0023 เบเกอรี (ต่างชาติ)', lateDays:0,  lateMin:0,   otDays:1,  otHours:2,    otHolDays:0, otHolHours:0,  otHolOTDays:0, otHolOTHours:0,   leaveSickDays:0,  leavePersonalDays:0, leaveVacationDays:0,   absent:0},
+  // แผนก D0029 ขนส่ง
+  {id:'68007',  name:'ศุภากร จอมทอง',           dept:'D0029 ขนส่ง',              lateDays:0,  lateMin:0,   otDays:1,  otHours:3.5,  otHolDays:1, otHolHours:8,  otHolOTDays:0, otHolOTHours:0,   leaveSickDays:0,  leavePersonalDays:0, leaveVacationDays:0,   absent:0},
+  {id:'68011',  name:'พรชัย หว่านหอม',          dept:'D0029 ขนส่ง',              lateDays:0,  lateMin:0,   otDays:0,  otHours:0,    otHolDays:1, otHolHours:8,  otHolOTDays:0, otHolOTHours:0,   leaveSickDays:0,  leavePersonalDays:0, leaveVacationDays:0,   absent:0},
+  // แผนก D0031
+  {id:'680055', name:'มัณฑณานาฎ ลือแสง',        dept:'D0031 Warehouse & Logistics', lateDays:6,lateMin:21, otDays:11, otHours:11.5, otHolDays:1, otHolHours:8,  otHolOTDays:0, otHolOTHours:0,   leaveSickDays:0,  leavePersonalDays:0, leaveVacationDays:1,   absent:0},
+];
+
+// Derived field
+RAW.forEach(d => {
+  d.otHolDays_val   = d.otHolDays;
+  d.otHolHours_val  = d.otHolHours;
+  // total late minutes including lateDays*480 + lateMin
+  d.lateTotalMin = d.lateDays * 480 + d.lateMin;
+  // total leave days
+  d.leaveTotal = d.leaveSickDays + d.leavePersonalDays + d.leaveVacationDays;
+});
+
+let filtered = [...RAW];
+let sortKey = 'otHours';
+let sortDir = -1;
+
+// ─── populate dept & name filters ──────────────────────────────────────────
+const depts = [...new Set(RAW.map(d => d.dept))];
+const deptSel = document.getElementById('deptFilter');
+depts.forEach(d => {
+  const opt = document.createElement('option');
+  opt.value = d; opt.textContent = d;
+  deptSel.appendChild(opt);
+});
+
+const nameSel = document.getElementById('nameFilter');
+[...RAW].sort((a,b) => a.name.localeCompare(b.name, 'th')).forEach(d => {
+  const opt = document.createElement('option');
+  opt.value = d.id; opt.textContent = `${d.name} (${d.id})`;
+  nameSel.appendChild(opt);
+});
+
+function applyFilters() {
+  const dept = deptSel.value;
+  const empId = nameSel.value;
+  filtered = RAW.filter(d =>
+    (!dept  || d.dept === dept) &&
+    (!empId || d.id === empId)
+  );
+  sortData();
+  render();
+}
+
+function resetFilters() {
+  deptSel.value = '';
+  nameSel.value = '';
+  applyFilters();
+}
+
+function sortTable(key) {
+  if (sortKey === key) sortDir *= -1;
+  else { sortKey = key; sortDir = -1; }
+  // update headers
+  document.querySelectorAll('thead th').forEach(th => th.classList.remove('sorted'));
+  sortData();
+  render();
+}
+
+function sortData() {
+  filtered.sort((a, b) => {
+    let av = a[sortKey] ?? 0, bv = b[sortKey] ?? 0;
+    if (typeof av === 'string') return av.localeCompare(bv) * sortDir;
+    return (av - bv) * sortDir;
+  });
+}
+
+function fmt(val, unit='') {
+  if (!val) return '—';
+  return val + (unit ? ' '+unit : '');
+}
+
+function render() {
+  renderKPIs();
+  renderDepts();
+  renderChart();
+  renderTable();
+}
+
+function renderKPIs() {
+  const totalOT   = filtered.reduce((s,d) => s + d.otHours, 0);
+  const totalOTHol= filtered.reduce((s,d) => s + d.otHolHours, 0);
+  const totalLate = filtered.reduce((s,d) => s + d.lateDays, 0);
+  const totalLeave= filtered.reduce((s,d) => s + d.leaveTotal, 0);
+  const totalAbsent=filtered.reduce((s,d) => s + d.absent, 0);
+  const n = filtered.length;
+
+  document.getElementById('empCount').textContent = n + ' พนักงาน';
+
+  document.getElementById('kpiRow').innerHTML = `
+    <div class="kpi" style="--kpi-color:var(--ot)">
+      <div class="kpi-icon">⏱</div>
+      <div class="kpi-label">รวมโอที x1.5</div>
+      <div class="kpi-value">${totalOT.toFixed(1)}</div>
+      <div class="kpi-sub">ชั่วโมง / ${filtered.reduce((s,d)=>s+d.otDays,0)} วัน</div>
+    </div>
+    <div class="kpi" style="--kpi-color:var(--ot-holiday)">
+      <div class="kpi-icon">🏖️</div>
+      <div class="kpi-label">ทำงานวันหยุด/นักขัตฤกษ์</div>
+      <div class="kpi-value">${filtered.reduce((s,d)=>s+d.otHolHours,0).toFixed(1)}</div>
+      <div class="kpi-sub">ชั่วโมง / ${filtered.reduce((s,d)=>s+d.otHolDays,0)} วัน</div>
+    </div>
+    <div class="kpi" style="--kpi-color:#ff9f43">
+      <div class="kpi-icon">🌙</div>
+      <div class="kpi-label">โอทีล่วงเวลาวันหยุด</div>
+      <div class="kpi-value">${filtered.reduce((s,d)=>s+d.otHolOTHours,0).toFixed(1)}</div>
+      <div class="kpi-sub">ชั่วโมง / ${filtered.reduce((s,d)=>s+d.otHolOTDays,0)} วัน</div>
+    </div>
+    <div class="kpi" style="--kpi-color:var(--late)">
+      <div class="kpi-icon">🕐</div>
+      <div class="kpi-label">มาสาย</div>
+      <div class="kpi-value">${totalLate}</div>
+      <div class="kpi-sub">ครั้ง (${filtered.reduce((s,d)=>s+d.lateMin,0)} นาทีรวม)</div>
+    </div>
+    <div class="kpi" style="--kpi-color:var(--leave)">
+      <div class="kpi-icon">📅</div>
+      <div class="kpi-label">รวมวันลา</div>
+      <div class="kpi-value">${totalLeave.toFixed(1)}</div>
+      <div class="kpi-sub">ป่วย ${filtered.reduce((s,d)=>s+d.leaveSickDays,0).toFixed(1)} / กิจ ${filtered.reduce((s,d)=>s+d.leavePersonalDays,0).toFixed(1)} / พักร้อน ${filtered.reduce((s,d)=>s+d.leaveVacationDays,0).toFixed(1)} วัน</div>
+    </div>
+    <div class="kpi" style="--kpi-color:var(--absent)">
+      <div class="kpi-icon">❌</div>
+      <div class="kpi-label">ขาดงาน</div>
+      <div class="kpi-value">${totalAbsent}</div>
+      <div class="kpi-sub">วัน</div>
+    </div>
+  `;
+}
+
+function renderDepts() {
+  const deptMap = {};
+  filtered.forEach(d => {
+    if (!deptMap[d.dept]) deptMap[d.dept] = {emp:0,otH:0,lateD:0,lateM:0,leaveD:0,otHolH:0,otHolOTH:0};
+    const m = deptMap[d.dept];
+    m.emp++;
+    m.otH      += d.otHours;
+    m.lateD    += d.lateDays;
+    m.lateM    += d.lateMin;
+    m.leaveD   += d.leaveTotal;
+    m.otHolH   += d.otHolHours;
+    m.otHolOTH += d.otHolOTHours;
+  });
+
+  const colors = {'D0022':'#58a6ff','D0023':'#f78166','D0029':'#ffa657','D0031':'#7ee787'};
+
+  document.getElementById('deptGrid').innerHTML = Object.entries(deptMap).map(([dept,m]) => {
+    const code = dept.split(' ')[0];
+    const col = colors[code] || '#7d8590';
+    return `
+    <div class="dept-card" style="border-top:3px solid ${col}">
+      <div class="dept-name">
+        <span style="color:${col}">●</span>
+        ${dept.replace(code+' ','')}
+        <span class="dept-badge">${code}</span>
+        <span style="margin-left:auto;color:var(--muted);font-size:12px">${m.emp} คน</span>
+      </div>
+      <div class="dept-stats">
+        <div class="dstat"><div class="dstat-label">โอที x1.5</div><div class="dstat-val" style="color:var(--ot)">${m.otH.toFixed(1)} ชม.</div></div>
+        <div class="dstat"><div class="dstat-label">ทำงานวันหยุด</div><div class="dstat-val" style="color:var(--ot-holiday)">${m.otHolH.toFixed(1)} ชม.</div></div>
+        <div class="dstat"><div class="dstat-label">โอทีวันหยุด</div><div class="dstat-val" style="color:#ff9f43">${m.otHolOTH.toFixed(1)} ชม.</div></div>
+        <div class="dstat"><div class="dstat-label">มาสาย</div><div class="dstat-val" style="color:var(--late)">${m.lateD} ครั้ง</div></div>
+        <div class="dstat"><div class="dstat-label">ลาป่วย</div><div class="dstat-val" style="color:#7ee787">${RAW.filter(r=>r.dept===dept).reduce((s,r)=>s+r.leaveSickDays,0).toFixed(1)} วัน</div></div>
+        <div class="dstat"><div class="dstat-label">ลากิจ</div><div class="dstat-val" style="color:#d2a8ff">${RAW.filter(r=>r.dept===dept).reduce((s,r)=>s+r.leavePersonalDays,0).toFixed(1)} วัน</div></div>
+        <div class="dstat"><div class="dstat-label">พักร้อน</div><div class="dstat-val" style="color:#56d364">${RAW.filter(r=>r.dept===dept).reduce((s,r)=>s+r.leaveVacationDays,0).toFixed(1)} วัน</div></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderChart() {
+  const top10 = [...filtered].sort((a,b) => b.otHours - a.otHours).slice(0, 10);
+  const maxOT = Math.max(...top10.map(d => d.otHours), 1);
+
+  document.getElementById('otChart').innerHTML = top10.map(d => {
+    const pct = (d.otHours / maxOT * 100).toFixed(1);
+    const pctHol = (d.otHolHours / maxOT * 100).toFixed(1);
+    return `
+    <div class="bar-row">
+      <div class="bar-label" title="${d.name}">${d.name}</div>
+      <div class="bar-track">
+        <div class="bar-fill" style="--bar-color:var(--ot);width:${pct}%;position:relative">
+          ${d.otHours >= 10 ? d.otHours.toFixed(1)+' ชม.' : ''}
+          ${d.otHolHours > 0 ? `<div style="position:absolute;top:0;right:0;bottom:0;width:${(d.otHolHours/d.otHours*100).toFixed(0)}%;background:var(--ot-holiday);border-radius:0 4px 4px 0;opacity:.85"></div>` : ''}
+        </div>
+      </div>
+      <div class="bar-num">${d.otHours.toFixed(1)} ชม.</div>
+    </div>`;
+  }).join('');
+}
+
+function renderTable() {
+  const tbody = document.getElementById('tableBody');
+  if (!filtered.length) {
+    tbody.innerHTML = `<tr><td colspan="12" class="no-data">ไม่พบข้อมูล</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = filtered.map(d => {
+    const lateLabel = (d.lateDays > 0 || d.lateMin > 0)
+      ? `<span class="pill pill-late">${d.lateDays} ครั้ง</span> <span style="color:var(--muted);font-size:11px;font-family:'IBM Plex Mono',monospace">${d.lateMin} นาที</span>`
+      : `<span class="pill-zero">—</span>`;
+    const otLabel = d.otHours > 0
+      ? `<span class="pill pill-ot">${d.otHours.toFixed(1)} ชม.</span>`
+      : `<span class="pill-zero">—</span>`;
+    const otHolLabel = d.otHolHours > 0
+      ? `<span class="pill pill-ot" style="background:#f7816622;color:var(--ot-holiday)">${d.otHolHours} ชม.</span>`
+      : `<span class="pill-zero">—</span>`;
+    const leaveLabel = d.leaveTotal > 0
+      ? `<span class="pill pill-leave">${d.leaveTotal.toFixed(1)} วัน</span>`
+      : `<span class="pill-zero">—</span>`;
+    const absentLabel = d.absent > 0
+      ? `<span class="pill pill-absent">${d.absent}</span>`
+      : `<span class="pill-zero">—</span>`;
+    return `
+    <tr>
+      <td><span class="emp-id">${d.id}</span></td>
+      <td>${d.name}</td>
+      <td><span class="dept-tag">${d.dept.replace(/^D\d+ /,'')}</span></td>
+      <td style="text-align:right">${d.lateDays > 0 ? `<span class="pill pill-late">${d.lateDays} ครั้ง</span>` : `<span class="pill-zero">—</span>`}</td>
+      <td style="text-align:right">${d.lateMin > 0 ? `<span style="color:var(--late);font-family:'IBM Plex Mono',monospace;font-size:12px">${d.lateMin} นาที</span>` : `<span class="pill-zero">—</span>`}</td>
+      <td style="text-align:right">${otLabel}</td>
+      <td style="text-align:right">${d.otHolHours > 0 ? `<span class="pill pill-ot" style="background:#f7816622;color:var(--ot-holiday)">${d.otHolHours} ชม.</span>` : `<span class="pill-zero">—</span>`}</td>
+      <td style="text-align:right">${d.otHolOTHours > 0 ? `<span class="pill pill-ot" style="background:#ff9f4322;color:#ff9f43">${d.otHolOTHours} ชม.</span>` : `<span class="pill-zero">—</span>`}</td>
+      <td style="text-align:right">${d.leaveSickDays > 0 ? `<span class="pill pill-leave" style="background:#7ee78722;color:#7ee787">${d.leaveSickDays} วัน</span>` : `<span class="pill-zero">—</span>`}</td>
+      <td style="text-align:right">${d.leavePersonalDays > 0 ? `<span class="pill pill-leave" style="background:#d2a8ff22;color:#d2a8ff">${d.leavePersonalDays} วัน</span>` : `<span class="pill-zero">—</span>`}</td>
+      <td style="text-align:right">${d.leaveVacationDays > 0 ? `<span class="pill pill-leave" style="background:#56d36422;color:#56d364">${d.leaveVacationDays} วัน</span>` : `<span class="pill-zero">—</span>`}</td>
+      <td style="text-align:right">${absentLabel}</td>
+    </tr>`;
+  }).join('');
+}
+
+// init
+sortData();
+render();
+</script>
+</body>
+</html>
